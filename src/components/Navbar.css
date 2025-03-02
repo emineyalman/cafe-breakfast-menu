@@ -1,0 +1,126 @@
+.navbar {
+  background-color: var(--turkish-red);
+  box-shadow: 0 4px 12px rgba(227, 10, 23, 0.2);
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+}
+
+.navbar-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1rem 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.navbar-logo {
+  text-decoration: none;
+  transition: transform 0.3s ease;
+}
+
+.navbar-logo:hover {
+  transform: translateY(-2px);
+}
+
+.navbar-logo h1 {
+  color: var(--white);
+  font-size: 2rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.logo-accent {
+  display: block;
+  font-size: 0.9rem;
+  color: var(--white);
+  opacity: 0.9;
+}
+
+.navbar-links {
+  display: flex;
+  gap: 2.5rem;
+  align-items: center;
+}
+
+.nav-link {
+  text-decoration: none;
+  color: var(--white);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 500;
+  font-size: 1.1rem;
+  transition: all 0.3s ease;
+  padding: 0.5rem 0;
+  position: relative;
+}
+
+.nav-link::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background-color: var(--white);
+  transition: width 0.3s ease;
+}
+
+.nav-link:hover::after {
+  width: 100%;
+}
+
+.nav-link i {
+  font-size: 1.2rem;
+}
+
+.table-number {
+  background-color: var(--white);
+  padding: 0.8rem 1.5rem;
+  border-radius: 50px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.table-number span {
+  color: var(--turkish-red);
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.table-number strong {
+  color: var(--turkish-red);
+  font-size: 1.4rem;
+  font-weight: 700;
+}
+
+.hamburger-menu {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .hamburger-menu {
+    display: block;
+  }
+
+  .navbar-links {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background-color: var(--turkish-red);
+    padding: 1rem;
+    flex-direction: column;
+    gap: 1rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  }
+
+  .navbar-links.active {
+    display: flex;
+  }
+} 
