@@ -1,0 +1,66 @@
+[
+    {
+      "id": 1,
+      "name": "Serpme Kahvaltı",
+      "category": "breakfast",
+      "price": "350",
+      "description": "Zengin çeşitlerle geleneksel Türk kahvaltısı",
+      "image": "/images/logo192.png"
+    },
+    {
+      "id": 2,
+      "name": "İskender Kebap",
+      "category": "main",
+      "price": "280",
+      "description": "Özel soslu, tereyağlı İskender kebap",
+      "image": "/images/logo192.png"
+    },
+    {
+      "id": 3,
+      "name": "Künefe",
+      "category": "desserts",
+      "price": "120",
+      "description": "Antep fıstıklı özel künefe",
+      "image": "/images/logo192.png"
+    },
+    {
+      "id": 4,
+      "name": "Türk Kahvesi",
+      "category": "drinks",
+      "price": "45",
+      "description": "Geleneksel Türk kahvesi",
+      "image": "/images/logo192.png"
+    },
+    {
+      "id": 5,
+      "name": "Kabak Salatası",
+      "category": "salads",
+      "price": "100",
+      "description": "Kabak ve limonlu salata",
+      "image": "/images/logo192.png"
+    },
+    {
+      "id": 6,
+      "name": "Patates Kızartması",
+      "category": "sides",
+      "price": "50",
+      "description": "Kızartılmış patates",
+      "image": "/images/logo192.png"
+    },
+    {
+      "id": 7,
+      "name": "Kola",
+      "category": "beverages",
+      "price": "25",
+      "description": "Gazlı içecek",
+      "image": "/images/logo192.png"
+    },
+    {
+      "id": 8,
+      "name": "Kola",
+      "category": "alcohol",
+      "price": "25",
+      "description": "Gazlı içecek",
+      "image": "/images/logo192.png"
+    }
+  ]

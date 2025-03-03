@@ -1,97 +1,65 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './Menu.css';
+import { collection, addDoc } from "firebase/firestore";
+import { db } from "../firebase";
 
 const Menu = () => {
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [menuItems, setMenuItems] = useState([]);
+  const [quantities, setQuantities] = useState({});
+
+  const addData = async (item) => {
+    const quantity = quantities[item.id] || 1; // Get quantity (default: 1)
+    try {
+      const docRef = await addDoc(collection(db, "orders"), {
+        id: item.id,
+        name: item.name,
+        pieces: quantity, // Use quantity
+        price: item.price * quantity, // Calculate total price
+      });
+      console.log("Order added successfully, ID:", docRef.id);
+      alert('Your order has been received!');
+    } catch (error) {
+      console.error("Error adding order:", error);
+      alert('An error occurred while adding your order. Please try again.');
+    }
+  };
+
+  const handleQuantityChange = (itemId, value) => {
+    setQuantities((prevQuantities) => ({
+      ...prevQuantities,
+      [itemId]: value,
+    }));
+  };
+
+  useEffect(() => {
+    fetch('/menu.json')
+      .then((response) => response.json())
+      .then((data) => setMenuItems(data))
+      .catch((error) => console.error('Error loading menu:', error));
+  }, []);
 
   const categories = [
-    { id: 'all', name: 'Tüm Menü' },
-    { id: 'breakfast', name: 'Kahvaltı' },
-    { id: 'main', name: 'Ana Yemekler' },
-    { id: 'desserts', name: 'Tatlılar' },
-    { id: 'drinks', name: 'İçecekler' },
-    { id: 'salads', name: 'Salatalar' },
-    { id: 'sides', name: 'Yan Ürünler' },
-    { id: 'beverages', name: 'İçecekler' },
-    { id: 'alcohol', name: 'Alkolsüz İçecekler' },
-    { id: 'alcoholic', name: 'Alkollü İçecekler' }
+    { id: 'all', name: 'All Menu' },
+    { id: 'breakfast', name: 'Breakfast' },
+    { id: 'main', name: 'Main Dishes' },
+    { id: 'desserts', name: 'Desserts' },
+    { id: 'drinks', name: 'Drinks' },
+    { id: 'salads', name: 'Salads' },
+    { id: 'sides', name: 'Sides' },
+    { id: 'beverages', name: 'Beverages' },
+    { id: 'alcohol', name: 'Non-Alcoholic Drinks' },
+    { id: 'alcoholic', name: 'Alcoholic Drinks' }
   ];
 
-  const menuItems = [
-    {
-      id: 1,
-      name: 'Serpme Kahvaltı',
-      category: 'breakfast',
-      price: '350',
-      description: 'Zengin çeşitlerle geleneksel Türk kahvaltısı',
-      image: '/images/breakfast.jpg'
-    },
-    {
-      id: 2,
-      name: 'İskender Kebap',
-      category: 'main',
-      price: '280',
-      description: 'Özel soslu, tereyağlı İskender kebap',
-      image: '/images/iskender.jpg'
-    },
-    {
-      id: 3,
-      name: 'Künefe',
-      category: 'desserts',
-      price: '120',
-      description: 'Antep fıstıklı özel künefe',
-      image: '/images/kunefe.jpg'
-    },
-    {
-      id: 4,
-      name: 'Türk Kahvesi',
-      category: 'drinks',
-      price: '45',
-      description: 'Geleneksel Türk kahvesi',
-      image: '/images/coffee.jpg'
-      },
-    {
-      id: 5,
-      name: 'Kabak Salatası',
-      category: 'salads',
-      price: '100',
-      description: 'Kabak ve limonlu salata',
-      image: '/images/salad.jpg'
-    },
-    {
-      id: 6,
-      name: 'Patates Kızartması', 
-      category: 'sides',
-      price: '50',
-      description: 'Kızartılmış patates',
-      image: '/images/potato.jpg'
-      },
-    {
-      id: 7,
-      name: 'Kola',
-      category: 'beverages',
-      price: '25',
-      description: 'Gazlı içecek',
-      image: '/images/cola.jpg'
-      },
-    {
-      id: 8,
-      name: 'Kola',
-      category: 'alcohol',
-      price: '25',
-      description: 'Gazlı içecek',
-      image: '/images/cola.jpg'
-    }
-  ];
-
-  const filteredItems = selectedCategory === 'all' 
-    ? menuItems 
+  const filteredItems = selectedCategory === 'all'
+    ? menuItems
     : menuItems.filter(item => item.category === selectedCategory);
 
   return (
     <div className="menu-container">
-      <h1 className="menu-title">Menümüz</h1>
-      
+      <h1 className="menu-title">Our Menu</h1>
+
       <div className="category-filters">
         {categories.map(category => (
           <button
@@ -114,10 +82,18 @@ const Menu = () => {
               <h3>{item.name}</h3>
               <p>{item.description}</p>
               <div className="menu-item-footer">
-                <span className="price">₺{item.price}</span>
-                <button className="order-button">
+                <span className="price">${item.price}</span>
+                <input
+                  type="number"
+                  min="1"
+                  value={quantities[item.id] || 1}
+                  onChange={(e) => handleQuantityChange(item.id, parseInt(e.target.value))}
+                  className="quantity-input"
+                  placeholder="Quantity"
+                />
+                <button className="order-button" onClick={() => addData(item)}>
                   <i className="fas fa-plus"></i>
-                  Sipariş Ver
+                  Order Now
                 </button>
               </div>
             </div>
@@ -128,4 +104,4 @@ const Menu = () => {
   );
 };
 
-export default Menu; 
+export default Menu;

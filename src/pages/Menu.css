@@ -113,7 +113,7 @@
 }
 
 .price::before {
-  content: '₺';
+ 
   font-size: 1rem;
   margin-right: 2px;
 }
@@ -141,6 +141,25 @@
 .order-button i {
   font-size: 1rem;
 }
+.quantity-input {
+  width: 60px; /* Input genişliği */
+  padding: 8px;
+  border: 2px solid #E30A17;
+  border-radius: 8px;
+  font-size: 1rem;
+  text-align: center;
+  color: #E30A17;
+  font-weight: 600;
+  margin: 0 10px; /* Input ile button arasındaki boşluk */
+  transition: all 0.3s ease;
+}
+
+.quantity-input:focus {
+  outline: none;
+  border-color: #cc0000;
+  box-shadow: 0 0 8px rgba(227, 10, 23, 0.3);
+}
+
 
 @media (max-width: 768px) {
   .menu-container {
@@ -165,5 +184,10 @@
     grid-template-columns: 1fr;
     gap: 1.5rem;
     padding: 0 1rem;
+  }
+  .quantity-input {
+    width: 50px; /* Mobilde daha küçük input genişliği */
+    padding: 6px;
+    font-size: 0.9rem;
   }
 } 
