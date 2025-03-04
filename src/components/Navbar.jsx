@@ -1,40 +1,73 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import './Navbar.css';
-import { collection, getDocs } from "firebase/firestore";
+import { collection, getDocs, addDoc, deleteDoc, doc } from "firebase/firestore";
 import { db } from "../firebase";
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isBasketOpen, setIsBasketOpen] = useState(false);
-  const [basketItems, setBasketItems] = useState([]);
   const [allOrders, setAllOrders] = useState([]);
   const [orderComplete, setOrderComplete] = useState(false);
   const [specialNotes, setSpecialNotes] = useState('');
+  const [totalQuantity, setTotalQuantity] = useState(0);
+  const [error, setError] = useState('');
 
   const getData = async () => {
     try {
       const querySnapshot = await getDocs(collection(db, "orders"));
-      const ordersArray = [];
+      const ordersMap = new Map();
+      
       querySnapshot.forEach((doc) => {
+        if (!doc.id) {
+          console.error("Document missing ID");
+          return;
+        }
+
         const data = doc.data();
-        // Ensure price is a valid number
+        if (!data.name) {
+          console.error("Document missing name field");
+          return;
+        }
+        if (!data.price) {
+          console.error("Document missing price field"); 
+          return;
+        }
+        if (!data.image) {
+          console.error("Document missing image field");
+        }
+
         const price = typeof data.price === 'string' ? 
-          parseFloat(data.price.replace(/[^\d.-]/g, '')) : // Remove non-numeric chars except decimal
+          parseFloat(data.price.replace(/[^\d.-]/g, '')) : 
           typeof data.price === 'number' ? 
             data.price : 
-            0; // Fallback to 0 if invalid
+            0;
 
-        ordersArray.push({ 
-          id: doc.id, 
-          ...data,
-          price: Number(price) || 0, // Convert to number and handle NaN
-          image: data.image || '/images/default-dish.png'
-        });
+        const quantity = data.quantity || 1;
+        
+        if (ordersMap.has(data.name)) {
+          const existingItem = ordersMap.get(data.name);
+          existingItem.quantity += quantity;
+        } else {
+          ordersMap.set(data.name, {
+            id: doc.id,
+            ...data,
+            price: Number(price) || 0,
+            quantity: quantity,
+            image: data.image || '/images/default-dish.png'
+          });
+        }
       });
+
+      const ordersArray = Array.from(ordersMap.values());
+      const total = ordersArray.reduce((sum, item) => sum + item.quantity, 0);
+
       setAllOrders(ordersArray);
+      setTotalQuantity(total);
+      setError('');
     } catch (error) {
       console.error("Error fetching orders:", error);
+      setError('Failed to load orders. Please try again.');
     }
   };
 
@@ -55,36 +88,116 @@ const Navbar = () => {
   };
 
   const handleQuantityChange = (itemId, change) => {
-    setBasketItems(prevItems => 
-      prevItems.map(item => {
+    if (!itemId || typeof itemId !== 'string') {
+      console.error("Invalid item ID");
+      setError('Unable to update quantity. Please try again.');
+      return;
+    }
+
+    setAllOrders(prevOrders => 
+      prevOrders.map(item => {
         if (item.id === itemId) {
-          const newQuantity = item.quantity + change;
-          return newQuantity > 0 ? { ...item, quantity: newQuantity } : null;
+          const newQuantity = (item.quantity || 0) + change;
+          return newQuantity >= 0 ? { ...item, quantity: newQuantity } : item;
         }
         return item;
-      }).filter(Boolean)
+      })
     );
+
+    setTotalQuantity(prev => Math.max(0, prev + change));
+    setError('');
   };
 
-  const handleRemoveItem = (itemId) => {
-    setBasketItems(prevItems => prevItems.filter(item => item.id !== itemId));
+  const handleDelete = async (id) => {
+    try {
+      const itemRef = doc(db, "orders", id);
+      await deleteDoc(itemRef);
+      
+      // Update local state after successful deletion
+      setAllOrders(prevOrders => {
+        const itemToDelete = prevOrders.find(item => item.id === id);
+        const quantityToRemove = itemToDelete ? itemToDelete.quantity : 0;
+        setTotalQuantity(prev => Math.max(0, prev - quantityToRemove));
+        return prevOrders.filter(item => item.id !== id);
+      });
+    } catch (error) {
+      console.error("Error deleting item:", error);
+      setError("Failed to delete item. Please try again.");
+    }
   };
 
   const calculateTotal = () => {
-    return basketItems.reduce((total, item) => {
+    return allOrders.reduce((total, item) => {
+      if (!item.id) {
+        console.error("Item missing ID");
+        return total;
+      }
       const price = typeof item.price === 'number' ? item.price : 0;
-      return total + (item.quantity * price);
+      return total + (price * (item.quantity || 0));
     }, 0);
   };
 
-  const completeOrder = () => {
-    setOrderComplete(true);
-    setBasketItems([]);
-    setSpecialNotes('');
-    setTimeout(() => {
-      setOrderComplete(false);
-      setIsBasketOpen(false);
-    }, 3000);
+  const completeOrder = async () => {
+    try {
+      const activeOrders = allOrders.filter(item => {
+        if (!item.id) {
+          console.error("Item missing ID field");
+          return false;
+        }
+        if (!item.name) {
+          console.error("Item missing name field");
+          return false;
+        }
+        if (!item.quantity) {
+          console.error("Item missing quantity field");
+          return false;
+        }
+        if (!item.price) {
+          console.error("Item missing price field");
+          return false;
+        }
+        return item.quantity > 0;
+      });
+
+      if (activeOrders.length === 0) {
+        setError('No valid items in order');
+        return;
+      }
+      
+      const orderData = {
+        items: activeOrders.map(item => ({
+          name: item.name || '',
+          quantity: item.quantity || 0,
+          price: item.price || 0
+        })),
+        totalAmount: calculateTotal() || 0,
+        specialNotes: specialNotes || '',
+        orderDate: new Date().toISOString(),
+        status: 'pending',
+        tableNumber: 12
+      };
+
+      await addDoc(collection(db, "NewOrders"), orderData);
+
+      setOrderComplete(true);
+      setError('');
+      
+      setAllOrders(prevOrders => 
+        prevOrders.map(item => ({...item, quantity: 0}))
+      );
+      setTotalQuantity(0);
+      setSpecialNotes('');
+
+      setTimeout(() => {
+        getData();
+        setOrderComplete(false);
+        setIsBasketOpen(false);
+      }, 3000);
+
+    } catch (error) {
+      console.error("Error completing order:", error);
+      setError('Failed to complete order. Please try again.');
+    }
   };
 
   return (
@@ -126,16 +239,16 @@ const Navbar = () => {
 
           <button className="basket-button" onClick={toggleBasket}>
             <i className="fas fa-shopping-basket"></i>
-            <span className="basket-count">{basketItems.length}</span>
+            <span className="basket-count">{totalQuantity}</span>
           </button>
 
           <button 
             className={`hamburger-menu ${isOpen ? 'active' : ''}`}
             onClick={toggleMenu}
           >
-            <span></span>
-            <span></span>
-            <span></span>
+            <span className="hamburger-line"></span>
+            <span className="hamburger-line"></span>
+            <span className="hamburger-line"></span>
           </button>
         </div>
 
@@ -147,8 +260,9 @@ const Navbar = () => {
                 <i className="fas fa-times"></i>
               </button>
             </div>
+            {error && <div className="error-message">{error}</div>}
             <div className="basket-items">
-              {allOrders.map((item) => (
+              {allOrders.filter(item => item.quantity > 0 && item.id).map((item) => (
                 <div key={item.id} className="basket-item">
                   <div className="item-info">
                     <h3>{item.name}</h3>
@@ -170,11 +284,11 @@ const Navbar = () => {
                   </div>
                   <div className="item-actions">
                     <span className="item-price">
-                      ${(Number(item.price || 0) * (item.quantity || 1)).toFixed(2)}
+                      ${(item.price * (item.quantity || 0)).toFixed(2)}
                     </span>
                     <button 
                       className="remove-item-btn"
-                      onClick={() => handleRemoveItem(item.id)}
+                      onClick={() => handleDelete(item.id)}
                     >
                       <i className="fas fa-trash"></i>
                     </button>
@@ -196,7 +310,7 @@ const Navbar = () => {
                 <strong>${calculateTotal().toFixed(2)}</strong>
               </div>
 
-              {basketItems.length > 0 ? (
+              {totalQuantity > 0 ? (
                 <button className="complete-order-btn" onClick={completeOrder}>
                   Complete Order
                 </button>
