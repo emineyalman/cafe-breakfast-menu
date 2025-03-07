@@ -1,110 +1,101 @@
-import React, { useState, useEffect } from 'react';
-import { collection, getDocs } from "firebase/firestore";
-import { db } from "../firebase";
-import './Basket.css';
+import React from "react";
 
-const Basket = () => {
-  const [basketItems, setBasketItems] = useState([]);
-  const [orderComplete, setOrderComplete] = useState(false);
-  const [total, setTotal] = useState(0);
-
-  useEffect(() => {
-    getBasketItems();
-  }, []);
-
-  const getBasketItems = async () => {
-    try {
-      const querySnapshot = await getDocs(collection(db, "orders"));
-      const items = [];
-      querySnapshot.forEach((doc) => {
-        const data = doc.data();
-        items.push({
-          id: doc.id,
-          ...data,
-          quantity: data.quantity || 1,
-          price: Number(data.price) || 0
-        });
-      });
-      setBasketItems(items);
-      calculateTotal(items);
-    } catch (error) {
-      console.error("Error fetching basket items:", error);
-    }
-  };
-
-  const handleQuantityChange = (itemId, change) => {
-    setBasketItems(prevItems =>
-      prevItems.map(item => {
-        if (item.id === itemId) {
-          const newQuantity = Math.max(0, item.quantity + change);
-          return { ...item, quantity: newQuantity };
-        }
-        return item;
-      }).filter(item => item.quantity > 0)
-    );
-  };
-
-  const calculateTotal = (items) => {
-    const sum = items.reduce((acc, item) => {
-      return acc + (item.price * item.quantity);
-    }, 0);
-    setTotal(sum);
-  };
-
-  useEffect(() => {
-    calculateTotal(basketItems);
-  }, [basketItems]);
-
-  const completeOrder = () => {
-    setOrderComplete(true);
-    setBasketItems([]);
-    setTimeout(() => {
-      setOrderComplete(false);
-    }, 3000);
-  };
-
+const Basket = ({
+  isBasketOpen,
+  toggleBasket,
+  allOrders,
+  handleQuantityChange,
+  handleDelete,
+  calculateTotal,
+  specialNotes,
+  setSpecialNotes,
+  totalQuantity,
+  completeOrder,
+  orderComplete,
+  error,
+}) => {
   return (
-    <div className="basket-container">
-      <h2>Your Basket ({basketItems.length} items)</h2>
-      
-      <div className="basket-items">
-        {basketItems.map((item) => (
-          <div key={item.id} className="basket-item">
-            <div className="item-details">
-              <h3>{item.name}</h3>
-              <p className="price">${item.price.toFixed(2)}</p>
-            </div>
-            
-            <div className="quantity-controls">
-              <button onClick={() => handleQuantityChange(item.id, -1)}>-</button>
-              <span>{item.quantity}</span>
-              <button onClick={() => handleQuantityChange(item.id, 1)}>+</button>
-            </div>
+    <>
+      {isBasketOpen && (
+        <div className="basket-sidebar">
+          <div className="basket-header">
+            <h2>Your Orders</h2>
+            <button className="close-basket" onClick={toggleBasket}>
+              <i className="fas fa-times"></i>
+            </button>
           </div>
-        ))}
-      </div>
 
-      {basketItems.length > 0 ? (
-        <div className="basket-footer">
-          <div className="total">
-            <span>Total:</span>
-            <span>${total.toFixed(2)}</span>
+          {error && <div className="error-message">{error}</div>}
+
+          <div className="basket-items">
+            {allOrders
+              .filter((item) => item.quantity > 0 && item.id)
+              .map((item) => (
+                <div key={item.id} className="basket-item">
+                  <div className="item-info">
+                    <h3>{item.name}</h3>
+                    <div className="quantity-controls">
+                      <button
+                        className="quantity-btn"
+                        onClick={() => handleQuantityChange(item.id, -1)}
+                      >
+                        <i className="fas fa-minus"></i>
+                      </button>
+                      <span className="item-quantity">{item.quantity}</span>
+                      <button
+                        className="quantity-btn"
+                        onClick={() => handleQuantityChange(item.id, 1)}
+                      >
+                        <i className="fas fa-plus"></i>
+                      </button>
+                    </div>
+                  </div>
+                  <div className="item-actions">
+                    <span className="item-price">
+                      ${(item.price * (item.quantity || 0)).toFixed(2)}
+                    </span>
+                    <button
+                      className="remove-item-btn"
+                      onClick={() => handleDelete(item.id)}
+                    >
+                      <i className="fas fa-trash"></i>
+                    </button>
+                  </div>
+                </div>
+              ))}
           </div>
-          <button className="complete-order" onClick={completeOrder}>
-            Complete Order
-          </button>
-        </div>
-      ) : (
-        <p className="empty-message">Your basket is empty</p>
-      )}
 
-      {orderComplete && (
-        <div className="order-success">
-          Order completed successfully!
+          <div className="basket-footer">
+            <textarea
+              className="special-notes"
+              placeholder="Add special notes for your order..."
+              value={specialNotes}
+              onChange={(e) => setSpecialNotes(e.target.value)}
+            />
+
+            <div className="order-total">
+              <span>Total:</span>
+              <strong>${calculateTotal().toFixed(2)}</strong>
+            </div>
+
+            {totalQuantity > 0 ? (
+              <button className="complete-order-btn" onClick={completeOrder}>
+                Complete Order
+              </button>
+            ) : (
+              <p className="empty-basket-message">Your basket is empty</p>
+            )}
+
+            {orderComplete && (
+              <div className="order-success">
+                Your order has been received!
+              </div>
+            )}
+          </div>
         </div>
       )}
-    </div>
+    </>
   );
 };
 
-export default Basket
+export default Basket;

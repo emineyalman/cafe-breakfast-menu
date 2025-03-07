@@ -33,9 +33,7 @@ const Navbar = () => {
           console.error("Document missing price field"); 
           return;
         }
-        if (!data.image) {
-          console.error("Document missing image field");
-        }
+        
 
         const price = typeof data.price === 'string' ? 
           parseFloat(data.price.replace(/[^\d.-]/g, '')) : 
@@ -54,7 +52,7 @@ const Navbar = () => {
             ...data,
             price: Number(price) || 0,
             quantity: quantity,
-            image: data.image || '/images/default-dish.png'
+           
           });
         }
       });
@@ -332,3 +330,6 @@ const Navbar = () => {
 };
 
 export default Navbar;
+
+
+
