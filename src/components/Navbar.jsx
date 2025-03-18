@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import './Navbar.css';
-import { collection, getDocs, addDoc, deleteDoc, doc } from "firebase/firestore";
+import { collection, getDocs, addDoc, deleteDoc, doc, getDoc } from "firebase/firestore";
 import { db } from "../firebase";
 import Basket from './Basket';
 
@@ -22,7 +22,6 @@ const Navbar = () => {
   
       querySnapshot.forEach((doc) => {
         const data = doc.data();
-        // Validate required fields exist and are the correct type
         if (!data?.name || typeof data.name !== 'string' || 
             !data?.price || typeof parseFloat(data.price) !== 'number') {
           console.warn(`Skipping document ${doc.id} due to invalid or missing fields`);
@@ -32,13 +31,16 @@ const Navbar = () => {
         const price = parseFloat(data.price);
         const quantity = parseInt(data.quantity) || 1;
   
+        // Ensure id is a string by removing any numeric id from data
+        const { id: numericId, ...dataWithoutId } = data;
+  
         if (ordersMap.has(data.name)) {
           const existingItem = ordersMap.get(data.name);
           existingItem.quantity += quantity;
         } else {
           ordersMap.set(data.name, {
-            id: doc.id,
-            ...data,
+            id: doc.id, // Use Firestore's auto-generated string ID
+            ...dataWithoutId, // Use data without numeric id
             price,
             quantity
           });
@@ -85,33 +87,52 @@ const Navbar = () => {
   };
   
   const handleDelete = async (id) => {
-    if (!id || typeof id !== 'string') {
-      console.error("Invalid ID provided for deletion");
-      setError("Failed to delete item: Invalid ID");
+    if (!id || typeof id !== 'string' || id.trim() === "") {
+      console.error("Invalid ID provided for deletion:", id);
+      setError("Failed to delete item: Invalid ID provided");
       return;
     }
-
+  
     try {
-      // First update local state to give immediate feedback
-      setAllOrders(prevOrders => {
-        const itemToDelete = prevOrders.find(item => item.id === id);
-        if (!itemToDelete) {
-          throw new Error("Item not found");
-        }
-        const quantityToRemove = itemToDelete.quantity || 0;
-        setTotalQuantity(prev => Math.max(0, prev - quantityToRemove));
-        return prevOrders.filter(item => item.id !== id);
-      });
-
-      // Then attempt database deletion
-      const itemRef = doc(db, "orders", id);
+      const itemRef = doc(db, "orders", String(id));
+      const itemSnap = await getDoc(itemRef);
+  
+      if (!itemSnap.exists()) {
+        console.error("Item not found in Firestore:", id);
+        setError("Failed to delete item: Item not found in database");
+        return;
+      }
+  
       await deleteDoc(itemRef);
-
+      
+      setAllOrders(prevOrders => prevOrders.filter(item => item.id !== id));
+      setTotalQuantity(prev => Math.max(0, prev - (itemSnap.data().quantity || 0)));
+      
+      setError(null);
+      await getData();
+  
     } catch (error) {
-      // If database deletion fails, revert the local changes by re-fetching data
       console.error("Error deleting item:", error);
-      setError("Failed to delete item: Invalid ID");
-      getData(); // Refresh data from database to ensure consistency
+      setError("Failed to delete item: " + (error.message || "Unknown error"));
+    }
+  };
+  
+  const clearBasket = async () => {
+    try {
+      // Delete all items from Firestore
+      const deletePromises = allOrders.map(item => 
+        deleteDoc(doc(db, "orders", String(item.id)))
+      );
+      await Promise.all(deletePromises);
+      
+      // Clear local state
+      setAllOrders([]);
+      setTotalQuantity(0);
+      setSpecialNotes('');
+      setError('');
+    } catch (error) {
+      console.error("Error clearing basket:", error);
+      setError("Failed to clear basket: " + error.message);
     }
   };
 
@@ -126,16 +147,12 @@ const Navbar = () => {
 
   const completeOrder = async () => {
     try {
-      const activeOrders = allOrders.filter(item => {
-        if (!item?.id || !item?.name || !item?.quantity || !item?.price) {
-          return false;
-        }
-        return item.quantity > 0;
-      });
+      const activeOrders = allOrders.filter(item => 
+        item?.id && item?.name && item?.quantity > 0 && item?.price
+      );
 
       if (activeOrders.length === 0) {
-        setError('No valid items in order');
-        return;
+        throw new Error('No valid items in order');
       }
       
       const orderData = {
@@ -151,16 +168,22 @@ const Navbar = () => {
         tableNumber: 12
       };
 
-      await addDoc(collection(db, "NewOrders"), orderData);
+      try {
+        const docRef = await addDoc(collection(db, "NewOrders"), orderData);
+        orderData.id = docRef.id;
+        
+        // Clear the basket after successful order
+        await clearBasket();
+        
+      } catch (error) {
+        if (error.message.includes("Missing or insufficient permissions")) {
+          throw new Error("You don't have permission to place orders");
+        }
+        throw error;
+      }
 
       setOrderComplete(true);
       setError('');
-      
-      setAllOrders(prevOrders => 
-        prevOrders.map(item => ({...item, quantity: 0}))
-      );
-      setTotalQuantity(0);
-      setSpecialNotes('');
 
       setTimeout(() => {
         getData();
@@ -170,7 +193,7 @@ const Navbar = () => {
 
     } catch (error) {
       console.error("Error completing order:", error);
-      setError('Failed to complete order. Please try again.');
+      setError(error.message || 'Failed to complete order. Please check your permissions and try again.');
     }
   };
 

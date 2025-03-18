@@ -1,5 +1,3 @@
-
-
 const Basket = ({ 
   isBasketOpen, 
   toggleBasket, 
@@ -31,7 +29,7 @@ const Basket = ({
               <div className="quantity-controls">
                 <button 
                   className="quantity-btn"
-                  onClick={() => handleQuantityChange(item.id, -1)}
+                  onClick={() => handleQuantityChange(item.id, -1)} // Changed to decrease quantity by 1
                 >
                   <i className="fas fa-minus"></i>
                 </button>
@@ -73,7 +71,18 @@ const Basket = ({
         </div>
 
         {totalQuantity > 0 ? (
-          <button className="complete-order-btn" onClick={completeOrder}>
+          <button 
+            className="complete-order-btn" 
+            onClick={() => {
+              completeOrder();
+              // Clear all items from basket after order completion
+              allOrders.forEach(item => {
+                if(item.id) {
+                  handleDelete(item.id);
+                }
+              });
+            }}
+          >
             Complete Order
           </button>
         ) : (

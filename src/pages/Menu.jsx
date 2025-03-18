@@ -9,16 +9,22 @@ const Menu = () => {
   const [quantities, setQuantities] = useState({});
 
   const addData = async (item) => {
-    const quantity = quantities[item.id] || 1; // Get quantity (default: 1)
+    const quantity = quantities[item.id] || 1;
     try {
       const docRef = await addDoc(collection(db, "orders"), {
         id: item.id,
         name: item.name,
-        pieces: quantity, // Use quantity
-        price: item.price * quantity, // Calculate total price
+        quantity: quantity,
+        price: item.price * quantity,
       });
       console.log("Order added successfully, ID:", docRef.id);
       alert('Your order has been received!');
+      // Reset quantity after successful order
+      setQuantities(prevQuantities => {
+        const newQuantities = {...prevQuantities};
+        delete newQuantities[item.id];
+        return newQuantities;
+      });
     } catch (error) {
       console.error("Error adding order:", error);
       alert('An error occurred while adding your order. Please try again.');
@@ -26,10 +32,19 @@ const Menu = () => {
   };
 
   const handleQuantityChange = (itemId, value) => {
-    setQuantities((prevQuantities) => ({
-      ...prevQuantities,
-      [itemId]: value,
-    }));
+    if (value > 0) {
+      setQuantities((prevQuantities) => ({
+        ...prevQuantities,
+        [itemId]: value,
+      }));
+    } else {
+      // If quantity is 0 or negative, remove the item completely
+      setQuantities((prevQuantities) => {
+        const newQuantities = {...prevQuantities};
+        delete newQuantities[itemId];
+        return newQuantities;
+      });
+    }
   };
 
   useEffect(() => {
