@@ -5,7 +5,6 @@ import { db } from "../firebase";
 
 const Orders = () => {
   const [orders, setOrders] = useState([]);
-  const [activeTab, setActiveTab] = useState('active');
 
   const getOrders = async () => {
     try {
@@ -30,8 +29,7 @@ const Orders = () => {
 
   const getStatusColor = (status) => {
     const colors = {
-      confirmed: '#3498db',
-      preparing: '#e67e22', 
+      preparing: '#e67e22',
       completed: '#2ecc71',
       cancelled: '#e74c3c'
     };
@@ -41,21 +39,7 @@ const Orders = () => {
   return (
     <div className="orders-page">
       <div className="orders-header">
-        <h1>Your Orders</h1>
-        <div className="order-tabs">
-          <button 
-            className={`tab-button ${activeTab === 'active' ? 'active' : ''}`}
-            onClick={() => setActiveTab('active')}
-          >
-            Active Orders
-          </button>
-          <button 
-            className={`tab-button ${activeTab === 'completed' ? 'active' : ''}`}
-            onClick={() => setActiveTab('completed')}
-          >
-            Order History
-          </button>
-        </div>
+        <h1>Order History</h1>
       </div>
 
       <div className="orders-container">
@@ -68,12 +52,11 @@ const Orders = () => {
                   className="status-badge"
                   style={{ backgroundColor: getStatusColor(order.status) }}
                 >
-                  {order.status ? order.status.charAt(0).toUpperCase() + order.status.slice(1) : 'Pending'}
+                  {order.status === 'preparing' ? 'Getting Ready' : 
+                    order.status ? order.status.charAt(0).toUpperCase() + order.status.slice(1) : 'Getting Ready'}
                 </span>
               </div>
             </div>
-
-
 
             <div className="order-items">
               {order.items.map((item, index) => (

@@ -22,14 +22,14 @@ const Basket = ({
       </div>
       {error && <div className="error-message">{error}</div>}
       <div className="basket-items">
-        {allOrders.filter(item => item.quantity > 0 && item.id).map((item) => (
+        {allOrders.map((item) => (
           <div key={item.id} className="basket-item">
             <div className="item-info">
               <h3>{item.name}</h3>
               <div className="quantity-controls">
                 <button 
                   className="quantity-btn"
-                  onClick={() => handleQuantityChange(item.id, -1)} // Changed to decrease quantity by 1
+                  onClick={() => handleQuantityChange(item.id, -1)}
                 >
                   <i className="fas fa-minus"></i>
                 </button>
@@ -73,15 +73,7 @@ const Basket = ({
         {totalQuantity > 0 ? (
           <button 
             className="complete-order-btn" 
-            onClick={() => {
-              completeOrder();
-              // Clear all items from basket after order completion
-              allOrders.forEach(item => {
-                if(item.id) {
-                  handleDelete(item.id);
-                }
-              });
-            }}
+            onClick={completeOrder}
           >
             Complete Order
           </button>

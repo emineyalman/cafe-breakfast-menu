@@ -20,14 +20,14 @@
 .contact-section {
   text-align: center;
   padding: 2rem;
-  background: rgb(202, 189, 189);
+  background: rgb(215, 215, 215);
   border-radius: 10px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
 }
 
 .contact-section i {
   font-size: 2rem;
-  color: #e67e22;
+  color: var(--turkish-red);
   margin-bottom: 1rem;
 }
 

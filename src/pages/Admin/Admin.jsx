@@ -1,144 +1,209 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './Admin.css';
+import { collection, getDocs, doc, updateDoc, deleteDoc } from "firebase/firestore";
+import { db } from "../../firebase";
 
 const Admin = () => {
-  const [activeTab, setActiveTab] = useState('all');
-  const [orders, setOrders] = useState({
-    active: [
-      {
-        id: '1234',
-        status: 'hazırlanıyor',
-        items: [
-          { id: 1, name: 'Türk Kahvesi', quantity: 1, price: 4.50 },
-          { id: 2, name: 'Baklava', quantity: 2, price: 12.00 }
-        ],
-        tableNo: '12',
-        orderTime: '14:30',
-        estimatedTime: '15 dk'
-      }
-    ],
-    completed: [
-      {
-        id: '1233',
-        status: 'tamamlandı', 
-        items: [
-          { id: 3, name: 'Künefe', quantity: 1, price: 15.00 }
-        ],
-        tableNo: '8',
-        orderTime: '13:15',
-        completedTime: '13:45',
-        totalTime: '30 dk'
-      }
-    ]
-  });
+  const [orders, setOrders] = useState([]);
+  const [activeTab, setActiveTab] = useState('active');
 
-  const calculateTotal = (items) => {
-    return items.reduce((total, item) => total + (item.price * item.quantity), 0);
-  };
-
-  const handleStatusChange = (orderId, newStatus) => {
-    setOrders(prevOrders => {
-      const allOrders = [...prevOrders.active, ...prevOrders.completed];
-      const updatedOrder = allOrders.find(order => order.id === orderId);
-      
-      if (updatedOrder) {
-        const updatedOrderObj = {...updatedOrder, status: newStatus};
-        
-        return {
-          active: newStatus === 'hazırlanıyor' ? 
-            [...prevOrders.active.filter(o => o.id !== orderId), updatedOrderObj] :
-            prevOrders.active.filter(o => o.id !== orderId),
-          completed: newStatus === 'tamamlandı' ?
-            [...prevOrders.completed.filter(o => o.id !== orderId), updatedOrderObj] :
-            prevOrders.completed.filter(o => o.id !== orderId)
-        };
-      }
-      return prevOrders;
-    });
-  };
-
-  const getFilteredOrders = () => {
-    switch(activeTab) {
-      case 'active':
-        return orders.active;
-      case 'completed':
-        return orders.completed;
-      default:
-        return [...orders.active, ...orders.completed];
+  const getOrders = async () => {
+    try {
+      const querySnapshot = await getDocs(collection(db, "NewOrders"));
+      const ordersArray = [];
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        ordersArray.push({
+          id: doc.id,
+          ...data
+        });
+      });
+      setOrders(ordersArray);
+    } catch (error) {
+      console.error("Error fetching orders:", error);
     }
   };
 
+  useEffect(() => {
+    getOrders();
+    const interval = setInterval(getOrders, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const updateOrderStatus = async (orderId, newStatus) => {
+    try {
+      const orderRef = doc(db, "NewOrders", orderId);
+      await updateDoc(orderRef, {
+        status: newStatus
+      });
+      await getOrders();
+    } catch (error) {
+      console.error("Error updating order status:", error);
+    }
+  };
+
+  const deleteOrder = async (orderId) => {
+    try {
+      const orderRef = doc(db, "NewOrders", orderId);
+      await deleteDoc(orderRef);
+      await getOrders();
+    } catch (error) {
+      console.error("Error deleting order:", error);
+    }
+  };
+
+  const deleteAllOrders = async (status) => {
+    try {
+      const ordersToDelete = orders.filter(order => order.status === status);
+      await Promise.all(ordersToDelete.map(order => deleteOrder(order.id)));
+      await getOrders();
+    } catch (error) {
+      console.error("Error deleting orders:", error);
+    }
+  };
+
+  // eslint-disable-next-line no-unused-vars
+  const getStatusColor = (status) => {
+    const colors = {
+      pending: '#95a5a6',
+      preparing: '#e67e22',
+      completed: '#2ecc71',
+      cancelled: '#e74c3c'
+    };
+    return colors[status] || '#95a5a6';
+  };
+
+  const filteredOrders = orders.filter(order => {
+    if (activeTab === 'active') {
+      return order.status === 'pending';
+    } else if (activeTab === 'preparing') {
+      return order.status === 'preparing';
+    } else if (activeTab === 'cancelled') {
+      return order.status === 'cancelled';
+    } else {
+      return order.status === 'completed';
+    }
+  });
+
   return (
     <div className="admin-container">
-      <h1>Admin Paneli</h1>
-      
-      <div className="admin-tabs">
-        <button 
-          className={`tab-button ${activeTab === 'all' ? 'active' : ''}`}
-          onClick={() => setActiveTab('all')}
-        >
-          Tüm Siparişler
-        </button>
-        <button 
-          className={`tab-button ${activeTab === 'active' ? 'active' : ''}`}
-          onClick={() => setActiveTab('active')}
-        >
-          Hazırlanan Siparişler
-        </button>
-        <button 
-          className={`tab-button ${activeTab === 'completed' ? 'active' : ''}`}
-          onClick={() => setActiveTab('completed')}
-        >
-          Tamamlanan Siparişler
-        </button>
+      <div className="admin-header">
+        <h1>Admin Panel</h1>
+        <div className="order-tabs">
+          <button 
+            className={`tab-button ${activeTab === 'active' ? 'active' : ''}`}
+            onClick={() => setActiveTab('active')}
+          >
+            Active Orders
+          </button>
+          <button 
+            className={`tab-button ${activeTab === 'preparing' ? 'active' : ''}`}
+            onClick={() => setActiveTab('preparing')}
+          >
+            Getting Ready Orders
+          </button>
+          <button 
+            className={`tab-button ${activeTab === 'completed' ? 'active' : ''}`}
+            onClick={() => setActiveTab('completed')}
+          >
+            Completed Orders
+          </button>
+          <button 
+            className={`tab-button ${activeTab === 'cancelled' ? 'active' : ''}`}
+            onClick={() => setActiveTab('cancelled')}
+          >
+            Cancelled Orders
+          </button>
+        </div>
+        {(activeTab === 'completed' || activeTab === 'cancelled') && (
+          <div className="bulk-actions">
+            <button 
+              className="action-button delete"
+              onClick={() => deleteAllOrders(activeTab === 'completed' ? 'completed' : 'cancelled')}
+            >
+              Delete All {activeTab === 'completed' ? 'Completed' : 'Cancelled'} Orders
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="menu-grid">
-        {getFilteredOrders().map(order => (
+        {filteredOrders.map(order => (
           <div key={order.id} className="menu-item order-card">
+            {activeTab === 'active' && (
+                <div className="order-actions">
+                  <button 
+                    className="action-button preparing"
+                    onClick={() => updateOrderStatus(order.id, 'preparing')}
+                  >
+                    Getting Ready
+                  </button>
+                  <button 
+                    className="action-button cancel"
+                    onClick={() => updateOrderStatus(order.id, 'cancelled')}
+                  >
+                    Cancel Order
+                  </button>
+                </div>
+            )}
+            {activeTab === 'preparing' && (
+                <div className="order-actions">
+                  <button 
+                    className="action-button complete"
+                    onClick={() => updateOrderStatus(order.id, 'completed')}
+                  >
+                     Completed 
+                  </button>
+                  <button 
+                    className="action-button cancel"
+                    onClick={() => updateOrderStatus(order.id, 'cancelled')}
+                  >
+                    Cancel Order
+                  </button>
+                </div>
+            )}
+            {(activeTab === 'completed' || activeTab === 'cancelled') && (
+                <div className="order-actions">
+                  <button 
+                    className="action-button delete"
+                    onClick={() => deleteOrder(order.id)}
+                  >
+                    Delete Order
+                  </button>
+                </div>
+            )}
             <div className="order-header">
-              <h3>Masa No: {order.tableNo}</h3>
-              <div className="status-controls">
-                <button 
-                  className={`status-button ${order.status === 'hazırlanıyor' ? 'active' : ''}`}
-                  onClick={() => handleStatusChange(order.id, 'hazırlanıyor')}
-                >
-                  Hazırlanıyor
-                </button>
-                <button 
-                  className={`status-button ${order.status === 'tamamlandı' ? 'active' : ''}`}
-                  onClick={() => handleStatusChange(order.id, 'tamamlandı')}
-                >
-                  Tamamlandı
-                </button>
+              <div className="order-info">
+                <h3>Order #{order.id}</h3>
+                
               </div>
             </div>
 
             <div className="order-items">
-              {order.items.map(item => (
-                <div key={item.id} className="order-item">
+              {order.items.map((item, index) => (
+                <div key={index} className="order-item">
                   <div className="item-info">
+                    <span className="item-quantity">{item.quantity}x</span>
                     <span className="item-name">{item.name}</span>
-                    <span className="item-quantity">x{item.quantity}</span>
                   </div>
-                  <span className="item-price">₺{item.price.toFixed(2)}</span>
+                  <div className="item-actions">
+                    <span className="item-price">${(item.quantity * item.price).toFixed(2)}</span>
+                  </div>
                 </div>
               ))}
             </div>
 
             <div className="order-footer">
-              <div className="order-meta">
-                <span><i className="far fa-clock"></i>{order.orderTime}</span>
-                {order.status === 'hazırlanıyor' ? (
-                  <span><i className="fas fa-hourglass-half"></i>{order.estimatedTime}</span>
-                ) : (
-                  <span><i className="fas fa-stopwatch"></i>{order.totalTime}</span>
-                )}
-              </div>
               <div className="order-total">
-                <span>Toplam:</span>
-                <strong>₺{calculateTotal(order.items).toFixed(2)}</strong>
+                <span>Total:</span>
+                <strong>${order.totalAmount.toFixed(2)}</strong>
               </div>
+              {order.specialNotes && (
+                <div className="special-notes">
+                  <p><strong>Special Notes:</strong></p>
+                  <p>{order.specialNotes}</p>
+                </div>
+              )}
             </div>
           </div>
         ))}

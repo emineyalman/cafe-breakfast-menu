@@ -35,13 +35,13 @@ const Home = () => {
         <h2>Today's Specials</h2>
         <div className="offers-grid">
           <div className="offer-card">
-            <img src="/images/turkish-breakfast.jpg" alt="Turkish Breakfast" />
+              <img   style={{objectFit: 'contain'}} src="/images/logo512.png" alt="Turkish Breakfast" />
             <h3>Turkish Breakfast</h3>
             <p>Complete breakfast experience</p>
             <span className="price">$35.00</span>
           </div>
           <div className="offer-card">
-            <img src="/images/iskender.jpg" alt="Iskender Kebab" />
+              <img  style={{objectFit: 'contain'}} src="/images/logo512.png"alt="Iskender Kebab" />
             <h3>Iskender Kebab</h3>
             <p>Our signature dish</p>
             <span className="price">$28.00</span>
